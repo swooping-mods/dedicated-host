@@ -1,0 +1,17 @@
+{
+  "schema": "mod-source-hashes/v1",
+  "source_files": {
+    "mods/dedicated-host/dedicated_host/__init__.py": {
+      "export_sha256": "754fc2a3f533313feaafa52a7e3f4155cb6c7ee9c979b96239985c2a754d5d6a"
+    },
+    "mods/dedicated-host/dedicated_host/__main__.py": {
+      "export_sha256": "235831cd28f04e7b6bbc62380d9ad73126517dc2169a1c7cd179ec7470dfc9a8"
+    },
+    "mods/dedicated-host/dedicated_host/api-evidence.json": {
+      "export_sha256": "08ef75cb04f1cfee23d8624e60eda6d5328bbcb39e591694be73dd39a71446b9"
+    },
+    "mods/dedicated-host/mod.json": {
+      "export_sha256": "e066a4cfb5dc0a949fcfc95015be6e14df6c69058c7939ac4c8b36f16c1653e2"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "dedicated-host",
+  "kind": "companion",
+  "version": "0.1.0",
+  "backlog_id": "I21",
+  "entry_module": "dedicated_host.__main__",
+  "feature_dependencies": [],
+  "description": "Inspect hosting APIs and prepare private headless client experiments; true dedicated hosting remains exploratory."
+}

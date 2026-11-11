@@ -1,0 +1,124 @@
+{
+  "source": "Current Steam IL2CPP runtime bindings and inventory; no game code executed for this implementation",
+  "methods": [
+    {
+      "class": "MoonCrew",
+      "name": "get_Joined",
+      "token": 100666067,
+      "return": "System.Boolean",
+      "parameters": []
+    },
+    {
+      "class": "MoonCrew",
+      "name": "Join",
+      "token": 100666076,
+      "return": "System.Void",
+      "parameters": [
+        "System.String",
+        "System.UInt64"
+      ]
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "Create",
+      "token": 100666191,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "Update",
+      "token": 100666194,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "FindLocalPlayer",
+      "token": 100666196,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "SendPose",
+      "token": 100666197,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "JoinListedShift",
+      "token": 100666242,
+      "return": "System.Void",
+      "parameters": [
+        "System.UInt64",
+        "System.String"
+      ]
+    },
+    {
+      "class": "MoonCrewSession",
+      "name": "Bind",
+      "token": 100666263,
+      "return": "System.Void",
+      "parameters": [
+        "MoonCleaners.MoonWorld"
+      ]
+    },
+    {
+      "class": "MoonSteam",
+      "name": "StartSteam",
+      "token": 100670659,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonSession",
+      "name": "StartShift",
+      "token": 100670219,
+      "return": "System.Void",
+      "parameters": []
+    },
+    {
+      "class": "MoonSession",
+      "name": "JoinCrewShift",
+      "token": 100670220,
+      "return": "System.Boolean",
+      "parameters": [
+        "MoonCleaners.MoonLoadingScreen.IPrelude"
+      ]
+    }
+  ],
+  "lobby_methods_arity_only": [
+    {
+      "class": "MoonSteamLobby",
+      "name": "get_IsHost",
+      "token": 100670694,
+      "arity": 0
+    },
+    {
+      "class": "MoonSteamLobby",
+      "name": "get_ShiftStarted",
+      "token": 100670700,
+      "arity": 0
+    },
+    {
+      "class": "MoonSteamLobby",
+      "name": "Create",
+      "token": 100670723,
+      "arity": 2
+    },
+    {
+      "class": "MoonSteamLobby",
+      "name": "StartShift",
+      "token": 100670737,
+      "arity": 0
+    }
+  ],
+  "inference": "The inspected game-owned host lifecycle is coupled to Steam accounts/lobbies, an active session and local-player discovery. No proven dedicated bootstrap was established. Arity-only entries are not enough to call Create safely.",
+  "game_hashes": {
+    "GameAssembly.dll": "14f711a6a3b1b7cd803a03f85cc6c6201c5b546ab9b90329533f5cb8ae2e7f13",
+    "MoonSweepers.exe": "0e780f8e8d4bf26ed6bdd8a4068ac42a18846a66a80da7ba5c78f1917a093901",
+    "UnityPlayer.dll": "bfafc49b185eb8427ad75e3648bcba3bf5b07455567ca05ae2b2e23bc1646c0c"
+  }
+}
