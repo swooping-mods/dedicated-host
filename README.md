@@ -1,5 +1,7 @@
 # Dedicated Host Exploration
 
+<img src="media/icon.png" alt="Dedicated Host Exploration icon" width="128" height="128">
+
 Inspect hosting architecture and prepare private headless client experiments.
 
 ## Install
