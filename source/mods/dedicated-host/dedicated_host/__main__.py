@@ -13,15 +13,26 @@ import subprocess
 import sys
 import time
 
-SCHEMA = 'moon-dedicated-host-experiment/v1'
+SCHEMA = 'moon-dedicated-host-experiment/v2'
 OWNERSHIP = '.moon-dedicated-host.json'
 REQUIRED = ('MoonSweepers.exe', 'GameAssembly.dll', 'UnityPlayer.dll',
             'MoonSweepers_Data/il2cpp_data/Metadata/global-metadata.dat')
+# These identify loader overlays or profile trees, not clean game distribution
+# content. Match without case because the copied installation runs under Wine.
+FORBIDDEN_ROOTS = {'version.dll', 'winhttp.dll', 'doorstop_config.ini',
+                   'bepinex', 'melonloader', 'moonlab', '.wine',
+                   'system.reg', 'user.reg', 'userdef.reg'}
+PROFILE_DIRECTORIES = {'drive_c', 'dosdevices', 'prefix', 'profiles', 'saves'}
 
 
 def digest(path: Path) -> str:
     result = hashlib.sha256()
-    with path.open('rb') as stream:
+    path = nonsymlink(path)
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) |
+                         getattr(os, 'O_NONBLOCK', 0))
+    with os.fdopen(descriptor, 'rb') as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ValueError(f'Non-regular input refused: {path}')
         for block in iter(lambda: stream.read(1024 * 1024), b''):
             result.update(block)
     return result.hexdigest()
@@ -61,11 +72,29 @@ def api_evidence() -> dict:
 
 
 def inspect(game: Path) -> dict:
+    game = game_path(game)
     evidence = api_evidence()
     identity = {name: digest(game / name) for name in REQUIRED}
+    pins = evidence['game_hashes']
+    if not isinstance(pins, dict) or any(
+            name not in REQUIRED or not isinstance(value, str) or len(value) != 64 or
+            any(c not in '0123456789abcdef' for c in value)
+            for name, value in pins.items()):
+        raise ValueError('Malformed bundled game identity evidence')
+    missing = [name for name in REQUIRED if name not in pins]
+    mismatched = [name for name, expected in pins.items() if identity[name] != expected]
+    blockers = []
+    if missing:
+        blockers.append('Bundled evidence lacks required file pins: ' + ', '.join(missing))
+    if mismatched:
+        blockers.append('Source differs from bundled evidence: ' + ', '.join(mismatched))
     return {'schema': SCHEMA, 'mode': 'inspection', 'game': str(game),
             'source_sha256': identity,
-            'matches_evidence_build': all(identity.get(name) == expected for name, expected in evidence['game_hashes'].items()),
+            'matches_evidence_build': not blockers,
+            'admission': {'identity_admitted': not blockers,
+                          'clean_input_check_required': True,
+                          'missing_pins': missing, 'mismatched_files': mismatched,
+                          'blockers': blockers},
             'api_evidence': evidence,
             'dedicated_server': False,
             'qualification': 'Architecture pending; no clientless host bootstrap established',
@@ -78,18 +107,34 @@ def inspect(game: Path) -> dict:
 
 
 def source_files(source: Path):
-    for current, dirs, files in os.walk(source, followlinks=False):
+    def traversal_error(error):
+        raise error
+
+    for current, dirs, files in os.walk(source, followlinks=False, onerror=traversal_error):
         directory = nonsymlink(Path(current))
-        for name in dirs:
+        for name in sorted(dirs):
             nonsymlink(directory / name)
-        for name in files:
+            if name.casefold() in PROFILE_DIRECTORIES:
+                raise ValueError(f'Profile/prefix directory refused: {directory / name}')
+        if directory == source:
+            for name in dirs + files:
+                if name.casefold() in FORBIDDEN_ROOTS:
+                    raise ValueError(f'Choose a clean installed input; loader refused: {name}')
+        dirs.sort()
+        for name in sorted(files):
             item = nonsymlink(directory / name)
-            if not item.is_file():
+            if not stat.S_ISREG(item.lstat().st_mode):
                 raise ValueError(f'Non-regular input refused: {item}')
             yield item, item.relative_to(source)
 
 
+def inventory(source: Path) -> dict:
+    return {relative.as_posix(): {'size': item.stat().st_size, 'sha256': digest(item)}
+            for item, relative in source_files(source)}
+
+
 def prepare(source: Path, destination: Path) -> dict:
+    source = game_path(source)
     destination = nonsymlink(destination)
     if destination == source or source in destination.parents or destination in source.parents:
         raise ValueError('Private destination must be outside the source tree')
@@ -97,26 +142,35 @@ def prepare(source: Path, destination: Path) -> dict:
         raise ValueError('Destination already exists; existing installations are preserved')
     # Enumerate all input paths before writing. Personal saves and Wine prefixes
     # are never inputs: only the supplied game directory is copied.
-    entries = list(source_files(source))
     report = inspect(source)
     if not report['matches_evidence_build']:
-        raise ValueError('Unknown game build; inspect and qualify a new host experiment before preparation')
-    if (source / 'version.dll').exists() or (source / 'MoonLab').exists():
-        raise ValueError('Choose a clean installed input; existing loaders are not copied into the experiment')
+        raise ValueError('Preparation refused: ' + '; '.join(report['admission']['blockers']))
+    entries = list(source_files(source))
+    source_inventory = inventory(source)
+    if any(source_inventory[name]['sha256'] != report['source_sha256'][name]
+           for name in REQUIRED):
+        raise ValueError('Source changed during identity inspection')
     if (source / 'steam_appid.txt').exists() and (source / 'steam_appid.txt').read_text().strip() != '5335510':
         raise ValueError('Source Steam application identity differs')
     destination.mkdir(parents=True, exist_ok=False)
     game = destination / 'game'
-    game.mkdir()
     copied = 0
     try:
+        game.mkdir()
         for item, relative in entries:
+            nonsymlink(item)
             target = game / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(item, target, follow_symlinks=False)
+            # O_NOFOLLOW prevents a swapped final source component from turning
+            # a private copy into a symlink. Outputs are always new regular files.
+            descriptor = os.open(item, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) |
+                                 getattr(os, 'O_NONBLOCK', 0))
+            with os.fdopen(descriptor, 'rb') as original, target.open('xb') as output:
+                if not stat.S_ISREG(os.fstat(original.fileno()).st_mode):
+                    raise ValueError(f'Non-regular input refused: {item}')
+                shutil.copyfileobj(original, output)
             copied += 1
-        readback = {name: digest(game / name) for name in REQUIRED}
-        if readback != report['source_sha256']:
+        if inventory(game) != source_inventory or inventory(source) != source_inventory:
             raise ValueError('Source changed during private-copy preparation')
         if not (game / 'steam_appid.txt').exists():
             (game / 'steam_appid.txt').write_text('5335510\n')
@@ -124,7 +178,8 @@ def prepare(source: Path, destination: Path) -> dict:
                         owner='dedicated-host', prepared_at_ns=time.time_ns(),
                         source_game=str(source), private_game=str(game), files_copied=copied,
                         fresh_profile_required=True, saves_copied=False,
-                        source_files_changed=False, server_bootstrap_available=False)
+                        source_files_changed=False, server_bootstrap_available=False,
+                        game_inventory=inventory(game))
         write_json(destination / OWNERSHIP, manifest)
         return manifest
     except BaseException:
@@ -138,13 +193,23 @@ def load_installation(path: Path) -> tuple[Path, dict]:
     path = nonsymlink(path)
     manifest_path = nonsymlink(path / OWNERSHIP)
     manifest = json.loads(manifest_path.read_text())
-    if manifest.get('schema') != SCHEMA or manifest.get('owner') != 'dedicated-host':
+    if not isinstance(manifest, dict) or manifest.get('schema') != SCHEMA or manifest.get('owner') != 'dedicated-host':
         raise ValueError('Not an owned experimental installation')
+    if (manifest.get('mode') != 'prepared-headless-client-experiment' or
+            manifest.get('dedicated_server') is not False or
+            manifest.get('server_bootstrap_available') is not False or
+            manifest.get('fresh_profile_required') is not True or
+            manifest.get('saves_copied') is not False):
+        raise ValueError('Experimental installation admission flags changed')
     game = game_path(path / 'game')
     if str(game) != manifest.get('private_game'):
         raise ValueError('Installation moved; prepare a new private copy')
     if {name: digest(game / name) for name in REQUIRED} != manifest.get('source_sha256'):
         raise ValueError('Private game identity changed')
+    if inventory(game) != manifest.get('game_inventory'):
+        raise ValueError('Private game inventory changed; prepare a new copy')
+    if (game / 'steam_appid.txt').read_text().strip() != '5335510':
+        raise ValueError('Private Steam application identity differs')
     if not inspect(game)['matches_evidence_build']:
         raise ValueError('Experimental installation no longer matches the inspected build')
     return game, manifest

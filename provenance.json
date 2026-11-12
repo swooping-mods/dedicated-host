@@ -1,16 +1,29 @@
 {
   "schema": "mod-source-hashes/v1",
+  "source_sync": {
+    "workshop_revision": "ca32bbf79ce0840d5166a232bdb3a9fdcd761254",
+    "source_version": "0.1.0",
+    "payload_version": "0.1.0",
+    "compiled": false,
+    "gameplay_requalified": false,
+    "production_closure_complete": true,
+    "deferred_test_fixture_gaps": []
+  },
   "source_files": {
     "mods/dedicated-host/dedicated_host/__init__.py": {
+      "source_sha256": "754fc2a3f533313feaafa52a7e3f4155cb6c7ee9c979b96239985c2a754d5d6a",
       "export_sha256": "754fc2a3f533313feaafa52a7e3f4155cb6c7ee9c979b96239985c2a754d5d6a"
     },
     "mods/dedicated-host/dedicated_host/__main__.py": {
-      "export_sha256": "235831cd28f04e7b6bbc62380d9ad73126517dc2169a1c7cd179ec7470dfc9a8"
+      "source_sha256": "08b151b518a593c0df691226a2278acc86ba03175b352035ee31f7c8d08ebd27",
+      "export_sha256": "08b151b518a593c0df691226a2278acc86ba03175b352035ee31f7c8d08ebd27"
     },
     "mods/dedicated-host/dedicated_host/api-evidence.json": {
+      "source_sha256": "08ef75cb04f1cfee23d8624e60eda6d5328bbcb39e591694be73dd39a71446b9",
       "export_sha256": "08ef75cb04f1cfee23d8624e60eda6d5328bbcb39e591694be73dd39a71446b9"
     },
     "mods/dedicated-host/mod.json": {
+      "source_sha256": "e066a4cfb5dc0a949fcfc95015be6e14df6c69058c7939ac4c8b36f16c1653e2",
       "export_sha256": "e066a4cfb5dc0a949fcfc95015be6e14df6c69058c7939ac4c8b36f16c1653e2"
     }
   }
